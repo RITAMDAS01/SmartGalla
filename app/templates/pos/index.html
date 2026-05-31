@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block page_title %}Point of Sale{% endblock %}
+{% block content %}
+<div class="row g-4 h-100">
+    <div class="col-lg-8">
+        <div class="card p-3 h-100 d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Current Order</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary d-flex align-items-center gap-2" id="btnScan">
+                        <i class="bi bi-upc-scan"></i> Scan Webcam
+                    </button>
+                    <div class="input-group" style="width: 250px;">
+                        <span class="input-group-text bg-dark border-secondary text-light"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="productSearch" placeholder="Search product...">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search Results Dropdown -->
+            <div id="searchResults" class="list-group position-absolute w-100 shadow d-none" style="z-index: 1000; top: 60px; right: 0; max-width: 400px;"></div>
+
+            <div class="flex-grow-1 overflow-auto mt-2" style="max-height: 50vh;">
+                <table class="table table-striped align-middle" id="cartTable">
+                    <thead class="sticky-top bg-dark">
+                        <tr>
+                            <th>Product</th>
+                            <th width="120">Price</th>
+                            <th width="150">Qty</th>
+                            <th width="120">Total</th>
+                            <th width="60"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cartBody">
+                        <!-- Cart items will go here -->
+                        <tr id="emptyCartRow">
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <i class="bi bi-cart-x fs-1 d-block mb-2"></i>
+                                Cart is empty. Scan or search for products.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card p-4 h-100 d-flex flex-column bg-gradient" style="background: linear-gradient(145deg, #1e1e1e 0%, #2a2a35 100%);">
+            <h5 class="mb-4 text-center">Summary</h5>
+            <div class="d-flex justify-content-between mb-3 fs-5">
+                <span class="text-muted">Subtotal</span>
+                <span id="subtotalAmount">₹0.00</span>
+            </div>
+            <div class="d-flex justify-content-between mb-3 fs-5">
+                <span class="text-muted">Tax (0%)</span>
+                <span>₹0.00</span>
+            </div>
+            <hr class="border-secondary">
+            <div class="d-flex justify-content-between mb-4 fs-3 fw-bold text-primary">
+                <span>Total</span>
+                <span id="totalAmount">₹0.00</span>
+            </div>
+            
+            <div class="mt-auto d-grid gap-3">
+                <button class="btn btn-outline-danger btn-lg" id="btnClear">Clear Cart</button>
+                <button class="btn btn-success btn-lg fw-bold" id="btnCheckout">Checkout & Pay</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="posToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body" id="toastMessage"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let cart = {};
+    const toast = new bootstrap.Toast(document.getElementById('posToast'));
+    
+    function showToast(msg, isError=false) {
+        const t = document.getElementById('posToast');
+        t.className = `toast align-items-center text-white border-0 ${isError ? 'bg-danger' : 'bg-success'}`;
+        document.getElementById('toastMessage').innerText = msg;
+        toast.show();
+    }
+
+    function updateCartUI() {
+        const tbody = document.getElementById('cartBody');
+        const emptyRow = document.getElementById('emptyCartRow');
+        let total = 0;
+        
+        if (Object.keys(cart).length === 0) {
+            tbody.innerHTML = '';
+            tbody.appendChild(emptyRow);
+            emptyRow.classList.remove('d-none');
+        } else {
+            emptyRow.classList.add('d-none');
+            tbody.innerHTML = '';
+            
+            for (let id in cart) {
+                const item = cart[id];
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>
+                        <div class="fw-bold">${item.name}</div>
+                        <small class="text-muted">${item.barcode}</small>
+                    </td>
+                    <td>₹${item.price.toFixed(2)}</td>
+                    <td>
+                        <div class="input-group input-group-sm">
+                            <button class="btn btn-outline-secondary" onclick="updateQty(${id}, -1)">-</button>
+                            <input type="text" class="form-control text-center bg-dark text-white border-secondary" value="${item.quantity}" readonly>
+                            <button class="btn btn-outline-secondary" onclick="updateQty(${id}, 1)">+</button>
+                        </div>
+                    </td>
+                    <td class="fw-bold text-primary">₹${itemTotal.toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+        
+        document.getElementById('subtotalAmount').innerText = `₹${total.toFixed(2)}`;
+        document.getElementById('totalAmount').innerText = `₹${total.toFixed(2)}`;
+    }
+
+    function addToCart(product) {
+        if (cart[product.id]) {
+            if (cart[product.id].quantity < product.stock) {
+                cart[product.id].quantity += 1;
+                showToast(`Added another ${product.name} to cart.`);
+            } else {
+                showToast(`Not enough stock for ${product.name}!`, true);
+            }
+        } else {
+            if (product.stock > 0) {
+                cart[product.id] = { ...product, quantity: 1 };
+                showToast(`Added ${product.name} to cart.`);
+            } else {
+                showToast(`${product.name} is out of stock!`, true);
+            }
+        }
+        updateCartUI();
+    }
+
+    window.updateQty = function(id, delta) {
+        const item = cart[id];
+        if (item.quantity + delta > 0 && item.quantity + delta <= item.stock) {
+            item.quantity += delta;
+        } else if (item.quantity + delta <= 0) {
+            delete cart[id];
+        } else {
+             showToast(`Maximum stock reached for ${item.name}!`, true);
+        }
+        updateCartUI();
+    };
+
+    window.removeFromCart = function(id) {
+        delete cart[id];
+        updateCartUI();
+    };
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+        if(confirm('Are you sure you want to clear the cart?')) {
+            cart = {};
+            updateCartUI();
+        }
+    });
+
+    document.getElementById('btnScan').addEventListener('click', () => {
+        showToast('Scanning webcam... Please hold barcode to camera.', false);
+        document.getElementById('btnScan').disabled = true;
+        fetch('{{ url_for("pos.scan_barcode") }}', { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('btnScan').disabled = false;
+                if (data.error) {
+                    showToast(data.error, true);
+                } else {
+                    addToCart(data);
+                }
+            })
+            .catch(err => {
+                document.getElementById('btnScan').disabled = false;
+                showToast('Scanning failed. Camera issue?', true);
+            });
+    });
+
+    // Product Search
+    let searchTimeout;
+    const searchInput = document.getElementById('productSearch');
+    const searchResults = document.getElementById('searchResults');
+    
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const q = e.target.value.trim();
+        if (q.length < 2) {
+            searchResults.classList.add('d-none');
+            return;
+        }
+        
+        searchTimeout = setTimeout(() => {
+            fetch(`{{ url_for("pos.search_product") }}?q=${q}`)
+                .then(res => res.json())
+                .then(data => {
+                    searchResults.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(p => {
+                            const a = document.createElement('a');
+                            a.href = '#';
+                            a.className = 'list-group-item list-group-item-action bg-dark text-white border-secondary d-flex justify-content-between align-items-center';
+                            a.innerHTML = `
+                                <div>
+                                    <div class="fw-bold">${p.name}</div>
+                                    <small class="text-muted">Stock: ${p.stock}</small>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">₹${p.price.toFixed(2)}</span>
+                            `;
+                            a.onclick = (ev) => {
+                                ev.preventDefault();
+                                addToCart(p);
+                                searchInput.value = '';
+                                searchResults.classList.add('d-none');
+                            };
+                            searchResults.appendChild(a);
+                        });
+                        searchResults.classList.remove('d-none');
+                    } else {
+                        searchResults.classList.add('d-none');
+                    }
+                });
+        }, 300);
+    });
+
+    // Hide search results when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+            searchResults.classList.add('d-none');
+        }
+    });
+
+    // Checkout
+    document.getElementById('btnCheckout').addEventListener('click', () => {
+        if (Object.keys(cart).length === 0) {
+            showToast('Cart is empty!', true);
+            return;
+        }
+        
+        const cartArray = Object.values(cart);
+        document.getElementById('btnCheckout').disabled = true;
+        
+        fetch('{{ url_for("pos.checkout") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ cart: cartArray })
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('btnCheckout').disabled = false;
+            if (data.error) {
+                showToast(data.error, true);
+            } else {
+                showToast('Checkout successful!');
+                cart = {};
+                updateCartUI();
+                // Redirect to invoice page automatically later
+                setTimeout(() => {
+                    window.location.href = `/reports/invoice/${data.sale_id}`;
+                }, 1500);
+            }
+        })
+        .catch(err => {
+            document.getElementById('btnCheckout').disabled = false;
+            showToast('Checkout failed!', true);
+        });
+    });
+</script>
+{% endblock %}

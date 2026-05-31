@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block page_title %}Products{% endblock %}
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card p-4">
+            <h5 class="mb-4 d-flex justify-content-between align-items-center">
+                Add New Product
+                <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="collapse" data-bs-target="#addProductForm">
+                    <i class="bi bi-plus-lg"></i> Toggle Form
+                </button>
+            </h5>
+            <div class="collapse" id="addProductForm">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form.name.label(class="form-label") }}
+                            {{ form.name(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.barcode.label(class="form-label") }}
+                            <div class="input-group">
+                                {{ form.barcode(class="form-control", id="barcodeInput") }}
+                                <button class="btn btn-outline-secondary" type="button" id="btnScanBarcode" title="Scan Barcode"><i class="bi bi-upc-scan"></i></button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.category_id.label(class="form-label") }}
+                            {{ form.category_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.supplier_id.label(class="form-label") }}
+                            {{ form.supplier_id(class="form-select") }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.purchase_price.label(class="form-label") }}
+                            {{ form.purchase_price(class="form-control") }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.selling_price.label(class="form-label") }}
+                            {{ form.selling_price(class="form-control") }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.stock_quantity.label(class="form-label") }}
+                            {{ form.stock_quantity(class="form-control") }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form.min_stock_alert.label(class="form-label") }}
+                            {{ form.min_stock_alert(class="form-control") }}
+                        </div>
+                        <div class="col-12 mt-4 text-end">
+                            {{ form.submit(class="btn btn-primary px-5") }}
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Product Inventory</h5>
+        <div class="input-group w-25">
+            <input type="text" class="form-control" placeholder="Search product..." id="searchInput">
+            <button class="btn btn-outline-secondary" type="button"><i class="bi bi-search"></i></button>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Barcode</th>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prod in products %}
+                <tr>
+                    <td><code>{{ prod.barcode }}</code></td>
+                    <td class="fw-bold">{{ prod.name }}</td>
+                    <td>{{ prod.category.name if prod.category else '-' }}</td>
+                    <td>₹{{ "%.2f"|format(prod.selling_price) }}</td>
+                    <td>{{ prod.stock_quantity }}</td>
+                    <td>
+                        {% if prod.stock_quantity == 0 %}
+                        <span class="badge bg-danger">Out of Stock</span>
+                        {% elif prod.stock_quantity <= prod.min_stock_alert %}
+                        <span class="badge bg-warning text-dark">Low Stock</span>
+                        {% else %}
+                        <span class="badge bg-success">In Stock</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-info"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('btnScanBarcode').addEventListener('click', function() {
+    const btn = this;
+    const input = document.getElementById('barcodeInput');
+    const originalHtml = btn.innerHTML;
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+    btn.disabled = true;
+    
+    fetch('{{ url_for("inventory.scan_raw") }}', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            if (data.error) {
+                alert(data.error);
+            } else {
+                input.value = data.barcode;
+            }
+        })
+        .catch(err => {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            alert('Camera scan failed.');
+        });
+});
+</script>
+{% endblock %}
