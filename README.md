@@ -1,81 +1,100 @@
-# Smart Inventory Management System
+# SmartGalla - Advanced Web-Based POS & Inventory Management System
 
-A complete Inventory Management System and Point of Sale (POS) application built for small retail shops. It features a responsive modern UI (Bootstrap 5), secure authentication, webcam barcode scanning, and PDF invoice generation.
+SmartGalla is a fully responsive, cloud-compatible Point of Sale (POS) and Inventory Management web application. It is designed to empower small to medium retail businesses with real-time analytics, barcode scanning, and seamless checkout experiences.
 
-## Tech Stack
-- **Backend**: Python 3, Flask, Flask-SQLAlchemy, Flask-Login
-- **Frontend**: HTML5, CSS3, JavaScript, Bootstrap 5, Chart.js
-- **Database**: SQLite (No external server required)
-- **Barcode Scanning**: OpenCV + Pyzbar
-- **PDF Generation**: ReportLab
+## 🚀 Features
 
-## Features
-- **User Roles**: Admin and Employee roles with secure login (hashed passwords).
-- **Dashboard**: Real-time stats, low-stock alerts, and a revenue chart.
-- **Inventory CRUD**: Manage Products, Categories, and Suppliers.
-- **Point of Sale (POS)**: Build carts by searching or scanning barcodes directly from your webcam.
-- **Auto-Update**: Stock quantities decrease automatically upon checkout.
-- **Reporting**: Generate PDF Invoices and export sales data to CSV.
+*   **Cloud-Ready Barcode Scanning:** Built-in `Html5-Qrcode` integration allows users to scan product barcodes directly from their smartphone or laptop webcam without needing external hardware or backend OpenCV libraries.
+*   **Intuitive Point of Sale (POS):** A streamlined checkout interface with automatic cart calculations, manual quantity overrides, and instant receipt generation.
+*   **Advanced Dashboard Analytics:** Live financial tracking with `Chart.js`, featuring interactive Line Charts (Revenue over Time) and Pie Charts (Sales by Category), filterable by timeframe (7 Days, 30 Days, All Time).
+*   **Complete Inventory Management:** Full CRUD (Create, Read, Update, Delete) capabilities for Products, Categories, and Suppliers, including low-stock threshold alerts.
+*   **Mobile-Optimized:** The entire frontend is built with responsive Bootstrap 5 flexbox layouts, ensuring the checkout and inventory tables are fully usable on small touchscreen devices.
+*   **Secure Authentication:** Role-based access control for employees and administrators using `Flask-Login`.
 
-## Project Structure
-The app is modularized using **Flask Blueprints** for scalability:
-- `app/auth`: Login and session management.
-- `app/dashboard`: Analytics and charts.
-- `app/inventory`: Product, category, and supplier management.
-- `app/pos`: Billing, cart system, and barcode scanning logic.
-- `app/reports`: Sales history, inventory logs, CSV export, and PDF generation.
+## 🏗️ Architecture & Tech Stack
 
-## Database Schema
-- **User**: `id`, `username`, `password_hash`, `role`
-- **Category**: `id`, `name`, `description`
-- **Supplier**: `id`, `name`, `contact`, `address`
-- **Product**: `id`, `name`, `barcode`, `category_id`, `supplier_id`, `purchase_price`, `selling_price`, `stock_quantity`, `min_stock_alert`
-- **Sale**: `id`, `user_id`, `total_amount`, `timestamp`
-- **SaleItem**: `id`, `sale_id`, `product_id`, `quantity`, `price_at_time_of_sale`
-- **InventoryLog**: `id`, `product_id`, `change_amount`, `reason`, `timestamp`
+The application follows the **Model-View-Controller (MVC)** architectural pattern, implemented via Flask Blueprints to maintain a clean, modular, and scalable codebase.
 
-## Setup Guide
+### Backend
+*   **Framework:** Python 3 / Flask
+*   **Database:** SQLite (Production-ready on PythonAnywhere)
+*   **ORM:** SQLAlchemy (`Flask-SQLAlchemy`)
+*   **Authentication:** `Flask-Login` & `Werkzeug` Security
 
-### 1. Requirements
-- Python 3.8+
-- Webcam (required for barcode scanning feature)
+### Frontend
+*   **Styling:** HTML5, CSS3, Bootstrap 5 (Dark Mode theme)
+*   **Interactivity:** Vanilla JavaScript (ES6)
+*   **Data Visualization:** Chart.js
+*   **Camera Integration:** Html5-Qrcode (Frontend browser scanning)
 
-### 2. Installation
-Clone the project or navigate to the directory, then run:
+### Modular Structure (Flask Blueprints)
+The backend is split into independent domains:
+*   `/app/auth`: Handles user sessions and login security.
+*   `/app/dashboard`: Computes aggregate financial metrics and serves JSON APIs for Chart.js.
+*   `/app/inventory`: Manages SQLite database operations for the product catalog.
+*   `/app/pos`: Handles live cart interactions, product lookups by barcode, and checkout transaction commits.
+*   `/app/reports`: Generates post-sale invoices and historical sales tracking.
 
-```bash
-# Create a virtual environment
-python -m venv venv
+## 📂 Project Directory Structure
 
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On Mac/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+```text
+SmartGalla/
+│
+├── app/
+│   ├── __init__.py           # Flask App Factory & Blueprint Registration
+│   ├── extensions.py         # SQLAlchemy & LoginManager instances
+│   ├── models.py             # Database Schemas (User, Product, Sale, etc.)
+│   ├── auth/                 # Authentication Blueprint
+│   ├── dashboard/            # Dashboard Analytics Blueprint
+│   ├── inventory/            # Inventory Management Blueprint
+│   ├── pos/                  # Point of Sale Blueprint
+│   ├── reports/              # Invoices & Reports Blueprint
+│   │
+│   ├── static/               # Static Assets
+│   │   ├── css/style.css     # Custom CSS tokens and UI tweaks
+│   │   └── img/              # Branding and placeholders
+│   │
+│   └── templates/            # Jinja2 HTML Templates
+│       ├── base.html         # Global Layout & Navbar
+│       ├── auth/             # Login forms
+│       ├── dashboard/        # Chart.js canvases & metrics
+│       ├── inventory/        # Product tables & Edit modals
+│       └── pos/              # Barcode scanner & Checkout cart
+│
+├── data/                     # SQLite Database storage directory
+├── config.py                 # Environment configurations
+├── requirements.txt          # Python dependencies
+├── run.py                    # Local development server entry point
+└── wsgi.py                   # PythonAnywhere production entry point
 ```
 
-### 3. Initialize Database & Sample Data
-You can populate the database with dummy categories, suppliers, and products to test the system:
+## ⚙️ Installation & Deployment
 
-```bash
-python populate_db.py
-```
+### Local Development
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/SmartGalla.git
+   cd SmartGalla
+   ```
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+3. Initialize the database and run the app:
+   ```bash
+   python run.py
+   ```
+4. Open your browser and navigate to `http://127.0.0.1:5000`.
 
-### 4. Run the Application
-Start the Flask server:
+### PythonAnywhere Deployment
+1. Upload the project files to your PythonAnywhere files directory.
+2. Ensure the `/data` folder exists and has write permissions.
+3. In your PythonAnywhere Web tab, set the **Source code** path to your project folder.
+4. Set the **WSGI configuration file** to point to the `wsgi.py` file included in this repository.
+5. Click **Reload** and navigate to your cloud domain.
 
-```bash
-python run.py
-```
-
-Navigate to `http://localhost:5000` in your web browser.
-
-**Default Login:**
-- Username: `admin`
-- Password: `admin`
-
-## Running Locally for Free
-Because this uses SQLite, all database information is saved into a local file (`data/inventory.db`). There are no external databases, servers, or paid APIs required. It runs completely offline on your localhost.
+## 🔒 Security Notes
+*   Ensure that the `SECRET_KEY` in `config.py` is overridden with a secure, randomized string in production environments.
+*   The application assumes a secure HTTPS connection when deployed so that the browser can grant camera permissions for the barcode scanner. PythonAnywhere provides HTTPS by default on user subdomains.
